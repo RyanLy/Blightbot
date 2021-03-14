@@ -1,18 +1,16 @@
 // For blightBuildNumber = 1052;
 // Works on the Ironwood River Human Campaign.
-// Copy this and paste it into the console
+// 1. Start the campaign.
+// 2. Copy this and paste it into the console
+// 3. Type in main()
+// 4. Enjoy!
 
-var game = window.Blight.game
-var galaxy = window.galaxy
-
-var blightedLocation = galaxy.placeList.find(place => {
-  return place.blighted
-})
+var game = window.Blight.game;
+var galaxy = window.galaxy;
+var hexes = galaxy.map.hexes;
 
 function getOwnLocations() {
-  return galaxy.placeList.filter(place => {
-    return place.player
-  })
+  return galaxy.placeList.filter(place => place.player)
 }
 
 function getPlayer() {
@@ -20,12 +18,12 @@ function getPlayer() {
 }
 
 async function trainAllMilitia() {
-  await getOwnLocations().map(async (place) => {
+  for (const place of getOwnLocations()) {
     if (place.militiaEta === 0 && getPlayer().gold > place.militiaCost) {
       game.trigger('train_militia', place);
       await delay();
     }
-  })
+  }
 }
 
 async function deployStrongestUnit() {
@@ -52,16 +50,12 @@ function findPlaceWithUnclaimedUnit(militiaKind = 'human_standard') {
 function findEnemyUnits() {
   return galaxy.unitList
     .filter(unit => unit.undead === 1)
-    .sort((unit1, unit2) => unit1.might - unit2.might)
+    .sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2))
     .reverse()
 }
 
-function findStrongestEnemyHex() {
-  const strongest = findEnemyUnits()[0];
-  return strongest.path[strongest.path.length - 1] || strongest.hexIndex;
-}
 
-function delay (delay=500) {
+function delay (delay=1000) {
   return new Promise(resolve => {
     setTimeout(function() {
       return resolve();
@@ -71,7 +65,7 @@ function delay (delay=500) {
 
 async function goToHex(unit, hexIndex) {
   game.trigger('select_unit', unit);
-  game.trigger('mover_order_auto', galaxy.map.hexes[hexIndex]);
+  game.trigger('mover_order_auto', hexes[hexIndex]);
   await delay()
 }
 
@@ -80,44 +74,87 @@ async function nextTurn() {
   await delay(1500);
 }
 
+function getArmyMight(unit) {
+  return unit.getArmy().map(unit => unit.might).reduce((a, b) => a + b, 0)
+}
+
+function getIndependentUnitsOnBoard() {
+  return getPlayer().getUnits()
+    .filter(unit => unit.x > 0 && !unit.getFollowing())
+    .sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2))
+    .reverse();
+}
+
 function primaryUnit() {
-  return getPlayer().getUnits().filter(unit => unit.x > 0 && !unit.getFollowing())[0]
+  return getIndependentUnitsOnBoard()[0]
 }
 
 function secondaryUnit() {
-  return getPlayer().getUnits().filter(unit => unit.x > 0 && !unit.getFollowing())[1];
+  return getIndependentUnitsOnBoard()[1];
 }
 
 async function gatherAll(unit) {
-  game.trigger("gather_all", unit);
+  if (unit.hex.units.length > 1) {
+    game.trigger("gather_all", unit);
+    await delay();
+  }
+}
+
+async function spendAllValourOnGold() {
+  game.trigger("bazaar_buy_gold", Math.floor(getPlayer().valour / 10) * 10);
+  await delay();
+}
+
+function findClosestUnblightedHexFromIndex(hexIndex) {
+  if (hexes[hexIndex].place && !hexes[hexIndex].place.blighted) {
+    return hexIndex;
+  } else {
+    let queue = [hexIndex];
+    let visited = new Set();
+    while (queue.length) {
+      let currentHex = queue.shift();
+      if (hexes[currentHex].place && !hexes[currentHex].place.blighted) {
+        return currentHex
+      } else {
+        var validNeighbors = hexes[currentHex].neighbors.filter(hex =>
+          !visited.has(hex) && !hexes[currentHex].rivers.includes(hex)
+        );
+        visited.add(currentHex);
+        queue = queue.concat(validNeighbors);
+      }
+
+    }
+
+    return null;
+  }
+}
+
+async function gatherAllUnits() {
+  for (const unit of getIndependentUnitsOnBoard()) {
+    await gatherAll(unit);
+  }
+}
+
+async function buyPlace(place) {
+  game.trigger('buy_place', place);
   await delay();
 }
 
 async function performTurn() {
-  game.trigger("bazaar_buy_gold", Math.floor(getPlayer().valour / 10) * 10);
-  await delay();
-
+  await spendAllValourOnGold();
   await trainAllMilitia();
-  game.trigger("gather_all", primaryUnit());
-  await delay();
+  await gatherAll(primaryUnit());
+  await gatherAll(secondaryUnit());
 
-  var strongestEnemyHex = findStrongestEnemyHex();
-  if (strongestEnemyHex) {
-    await goToHex(primaryUnit(), strongestEnemyHex);
-  }
+  var enemyDestinations = findEnemyUnits().map(unit => unit.hexTarget !== -1 ? unit.hexTarget : unit.hexIndex).filter(hex => hex !== -1).map(hex => findClosestUnblightedHexFromIndex(hex));
+  var graveLocations = galaxy.graveList.map(grave => grave.hexIndex);
+  var zombieHexes = [...new Set(enemyDestinations.concat(graveLocations))];
 
-  var enemyUnits = findEnemyUnits().slice(1)
-  var enemyHexes = enemyUnits.map(unit => unit.path[unit.path.length - 1] || unit.hexIndex);
-
-  var zombieHexes = enemyHexes.concat(galaxy.graveList.map(grave => grave.hexIndex));
-  getPlayer().getUnits().filter(unit => unit.x > 0 && !unit.getFollowing()).filter(unit => unit !== primaryUnit() && unit !== secondaryUnit()).forEach(async (unit, index) => {
-    if (zombieHexes) {
+  if (zombieHexes) {
+    for (const [index, unit] of getIndependentUnitsOnBoard().entries()) {
       await goToHex(unit, zombieHexes[Math.min(zombieHexes.length - 1, index)])
-    } else {
-      await goToHex(primaryUnit(), strongestEnemyHex);
     }
-  })
-  await goToHex(secondaryUnit(), galaxy.placeList.find(place => place.kind === 'mana_source' && place.name === 'Kings Muck').hex.index);
+  }
 
   await nextTurn();
   console.log('Turn finished!')
@@ -126,28 +163,25 @@ async function performTurn() {
 async function init() {
   await trainAllMilitia();
   await deployStrongestUnit();
-  await gatherAll(primaryUnit());
+  await gatherAllUnits()
 
   var placeToBuy = findPlaceWithUnclaimedUnit()
   await goToHex(primaryUnit(), placeToBuy.hex.index);
-
   await nextTurn();
 
   await trainAllMilitia();
-
   await nextTurn();
 
-  game.trigger('buy_place', placeToBuy);
-  await delay();
-
+  await buyPlace(placeToBuy);
   await deployStrongestUnit();
   await trainAllMilitia();
-  await gatherAll(primaryUnit());
-  await gatherAll(secondaryUnit());
+  await gatherAllUnits();
 }
 
-await init();
+async function main() {
+  await init();
 
-while(!galaxy.gameOver) {
-  await performTurn();
+  while(!galaxy.gameOver) {
+    await performTurn();
+  }
 }
