@@ -4,9 +4,14 @@
 // 2. Type in main()
 // 3. Enjoy!
 
+// Other commands
+// pause() to pause the game after the init phase
+// resume() to pause the game after the init phase
+
 var game = window.Blight.game;
 var galaxy = window.galaxy;
 var hexes = galaxy?.map.hexes;
+var isPaused = false;
 
 function getOwnLocations() {
   return galaxy.placeList.filter(place => place.player)
@@ -20,7 +25,7 @@ async function trainAllMilitia() {
   for (const place of getOwnLocations()) {
     if (place.militiaEta === 0 && getPlayer().gold > place.militiaCost) {
       game.trigger('train_militia', place);
-      await delay();
+      await delay(1500);
     }
   }
 }
@@ -49,8 +54,6 @@ function findPlaceWithUnclaimedUnit(militiaKind = 'human_standard') {
 function findEnemyUnits() {
   return galaxy.unitList
     .filter(unit => unit.undead === 1 && !unit.getFollowing())
-    // .sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2))
-    // .reverse()
     .sort((unit1, unit2) => {
       distanceTo(unit1, findClosestUnblightedHexFromIndex(unit1.hexTarget !== -1 ? unit1.hexTarget : unit1.hexIndex)) -
       distanceTo(unit2, findClosestUnblightedHexFromIndex(unit2.hexTarget !== -1 ? unit2.hexTarget : unit2.hexIndex))
@@ -226,7 +229,8 @@ async function performTurn() {
     }
   }
 
-  if (freeUnits.length && !galaxy.gameOver) {
+  var enemyUnits = findEnemyUnits().length;
+  if (freeUnits.length && !galaxy.gameOver && enemyUnits > 0) {
     var enemyUnits = findEnemyUnits().sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2)).reverse();
 
     for (var [index, unit] of freeUnits.entries()) {
@@ -238,7 +242,7 @@ async function performTurn() {
   }
 
   await nextTurn();
-  console.log('Turn finished!')
+  console.info('Turn complete')
 }
 
 async function init() {
@@ -257,11 +261,28 @@ async function init() {
   await deployStrongestUnit();
   await trainAllMilitia();
   await gatherAllUnits();
-  game.trigger("hide_screen")
+
+  console.info('Init complete')
+}
+
+async function confirmDeck() {
+  game.trigger('deck_built')
+  await delay(2000);
+  console.info('Game started')
 
 }
 
-async function main() {
+function pause() {
+  isPaused = true;
+}
+
+function resume() {
+  isPaused = false;
+}
+
+async function main(leaveOnFinish = false) {
+  console.info('Starting');
+
   window.Blight.menu.trigger("create_sp_game", {"kind":"ironwood","difficulty":"1"})
   await delay(5000);
 
@@ -269,12 +290,21 @@ async function main() {
   galaxy = window.galaxy;
   hexes = galaxy.map.hexes;
 
-  game.trigger('deck_built')
-  await delay(2000);
-
+  await confirmDeck()
   await init();
 
   while(!galaxy.gameOver) {
-    await performTurn();
+    if (!isPaused) {
+      await performTurn();
+    } else {
+      await delay();
+    }
+  }
+
+  console.info('Game done!');
+
+  if (leaveOnFinish) {
+    game.trigger('launch_menu', 'main_menu');
+    await delay(2000);
   }
 }
