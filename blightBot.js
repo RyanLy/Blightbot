@@ -1,13 +1,13 @@
 // For blightBuildNumber = 1052;
 // Works on the Ironwood River Human Campaign.
-// 1. Start the campaign.
-// 2. Copy this and paste it into the console
-// 3. Type in main()
-// 4. Enjoy!
+// 1. On the main page, paste this entire file in the chrome console
+// 2. Type in main()
+// 3. Enjoy!
 
 var game = window.Blight.game;
+var menu = window.Blight.menu;
 var galaxy = window.galaxy;
-var hexes = galaxy.map.hexes;
+var hexes = galaxy?.map.hexes;
 
 function getOwnLocations() {
   return galaxy.placeList.filter(place => place.player)
@@ -67,14 +67,16 @@ function delay(delay=500) {
 }
 
 async function goToHex(unit, hexIndex) {
-  game.trigger('select_unit', unit);
-  game.trigger('mover_order_auto', hexes[hexIndex]);
-  await delay(100)
+  if (!unit.isFleeing) {
+    game.trigger('select_unit', unit);
+    game.trigger('mover_order_auto', hexes[hexIndex]);
+    await delay(100)
+  }
 }
 
-async function nextTurn() {
+async function nextTurn(delayms = 1250) {
   game.trigger('next_turn');
-  await delay(1500);
+  await delay(delayms);
 }
 
 function getArmyMight(unit) {
@@ -140,7 +142,7 @@ async function gatherAllUnits() {
 
 async function buyPlace(place) {
   game.trigger('buy_place', place);
-  await delay();
+  await delay(1500);
 }
 
 function distanceTo(unit, destinationHex) {
@@ -225,8 +227,9 @@ async function performTurn() {
     }
   }
 
-  if (freeUnits.length) {
-    var enemyUnits = findEnemyUnits();
+  if (freeUnits.length && !galaxy.gameOver) {
+    var enemyUnits = findEnemyUnits().sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2)).reverse();
+
     for (var [index, unit] of freeUnits.entries()) {
       var enemyUnit = enemyUnits[Math.min(enemyUnits.length -1, index)]
       freeUnits.splice(freeUnits.indexOf(unit), 1);
@@ -236,7 +239,6 @@ async function performTurn() {
   }
 
   await nextTurn();
-  game.trigger("hide_screen")
   console.log('Turn finished!')
 }
 
@@ -247,10 +249,10 @@ async function init() {
 
   var placeToBuy = findPlaceWithUnclaimedUnit()
   await goToHex(primaryUnit(), placeToBuy.hex.index);
-  await nextTurn();
+  await nextTurn(1750);
 
   await trainAllMilitia();
-  await nextTurn();
+  await nextTurn(1750);
 
   await buyPlace(placeToBuy);
   await deployStrongestUnit();
@@ -261,6 +263,16 @@ async function init() {
 }
 
 async function main() {
+  menu.trigger("create_sp_game", {"kind":"ironwood","difficulty":"1"})
+  await delay(5000);
+
+  game = window.Blight.game;
+  galaxy = window.galaxy;
+  hexes = galaxy.map.hexes;
+
+  game.trigger('deck_built')
+  await delay(2000);
+
   await init();
 
   while(!galaxy.gameOver) {
