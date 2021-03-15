@@ -72,7 +72,8 @@ async function goToHex(unit, hexIndex) {
   if (!unit.isFleeing) {
     game.trigger('select_unit', unit);
     game.trigger('mover_order_auto', hexes[hexIndex]);
-    await delay(100)
+    await delay(100);
+    game.trigger("select_none")
   }
 }
 
@@ -108,8 +109,11 @@ async function gatherAll(unit) {
 }
 
 async function spendAllValourOnGold() {
-  game.trigger("bazaar_buy_gold", Math.floor(getPlayer().valour / 10) * 10);
-  await delay();
+  const valor = Math.floor(getPlayer().valour / 10) * 10;
+  if (valor >= 10) {
+    game.trigger("bazaar_buy_gold", valor);
+    await delay(1000);
+  }
 }
 
 function findClosestUnblightedHexFromIndex(hexIndex) {
