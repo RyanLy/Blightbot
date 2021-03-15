@@ -5,7 +5,6 @@
 // 3. Enjoy!
 
 var game = window.Blight.game;
-var menu = window.Blight.menu;
 var galaxy = window.galaxy;
 var hexes = galaxy?.map.hexes;
 
@@ -263,7 +262,7 @@ async function init() {
 }
 
 async function main() {
-  menu.trigger("create_sp_game", {"kind":"ironwood","difficulty":"1"})
+  window.Blight.menu.trigger("create_sp_game", {"kind":"ironwood","difficulty":"1"})
   await delay(5000);
 
   game = window.Blight.game;
