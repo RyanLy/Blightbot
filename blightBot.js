@@ -69,16 +69,16 @@ function findEnemyUnits() {
   return galaxy.unitList
     .filter((unit) => unit.undead === 1 && !unit.getFollowing())
     .sort((unit1, unit2) => {
-      distanceTo(
+      return distanceTo(
         unit1,
         findClosestUnblightedHexFromIndex(
-          unit1.hexTarget !== -1 ? unit1.hexTarget : unit1.hexIndex
+          unit1.hexTarget === -1 ? unit1.hexIndex  : unit1.hexTarget
         )
       ) -
         distanceTo(
           unit2,
           findClosestUnblightedHexFromIndex(
-            unit2.hexTarget !== -1 ? unit2.hexTarget : unit2.hexIndex
+            unit2.hexTarget === -1 ?  unit2.hexIndex : unit2.hexTarget
           )
         );
     });
@@ -260,10 +260,10 @@ async function performTurn() {
         ? [freeUnits[0]]
         : availableUnits;
     var targetHex =
-      enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex;
+      enemyUnit.hexTarget === -1 ? enemyUnit.hexIndex : enemyUnit.hexTarget;
     if (targetHex !== -1 && availableUnits.length > 0) {
       var enemyDestination = findClosestUnblightedHexFromIndex(
-        enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex
+        enemyUnit.hexTarget === -1 ? enemyUnit.hexIndex : enemyUnit.hexTarget
       );
 
       if (!enemyDestinations.has(enemyDestination)) {
@@ -316,7 +316,7 @@ async function performTurn() {
       var enemyUnit = enemyUnits[Math.min(enemyUnits.length - 1, index)];
       freeUnits.splice(freeUnits.indexOf(unit), 1);
       var enemyDestination = findClosestUnblightedHexFromIndex(
-        enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex
+        enemyUnit.hexTarget === -1 ? enemyUnit.hexIndex : enemyUnit.hexTarget
       );
       await goToHex(unit, enemyDestination);
     }
