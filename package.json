@@ -1,0 +1,24 @@
+{
+  "name": "blightbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "blightBot.js",
+  "devDependencies": {
+    "@babel/core": "^7.13.10",
+    "@babel/eslint-parser": "^7.13.10",
+    "eslint": "^7.22.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanLy/Blightbot.git"
+  },
+  "author": "Ryan Ly",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RyanLy/Blightbot/issues"
+  },
+  "homepage": "https://github.com/RyanLy/Blightbot#readme"
+}

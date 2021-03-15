@@ -14,7 +14,7 @@ var hexes = galaxy?.map.hexes;
 var isPaused = false;
 
 function getOwnLocations() {
-  return galaxy.placeList.filter(place => place.player)
+  return galaxy.placeList.filter((place) => place.player);
 }
 
 function getPlayer() {
@@ -31,40 +31,62 @@ async function trainAllMilitia() {
 }
 
 async function deployStrongestUnit() {
-  const eligibleUnits = getPlayer().getUnits()
-    .filter(unit => unit.x < 1 && getPlayer().gold > unit.cost)
+  const eligibleUnits = getPlayer()
+    .getUnits()
+    .filter((unit) => unit.x < 1 && getPlayer().gold > unit.cost);
 
   if (eligibleUnits.length) {
-    var strongest = eligibleUnits.reduce((max, unit) =>  max.might > unit.might ? max : unit)
+    var strongest = eligibleUnits.reduce((max, unit) =>
+      max.might > unit.might ? max : unit
+    );
 
-    game.trigger('select_drawn_unit', strongest)
+    game.trigger('select_drawn_unit', strongest);
     game.trigger('pre_deploy_drawn_unit', strongest, getPlayer());
     await delay();
 
     const ownLocations = getOwnLocations();
-    game.trigger('target_select_hex', ownLocations.reduce((max, unit) =>  max.y < unit.y ? max : unit).hex);
+    game.trigger(
+      'target_select_hex',
+      ownLocations.reduce((max, unit) => (max.y < unit.y ? max : unit)).hex
+    );
     await delay();
   }
 }
 
 function findPlaceWithUnclaimedUnit(militiaKind = 'human_standard') {
-  return galaxy.placeList.filter(place => place.blighted === 0 && !place.player && place.getHex().getUnits().length > 0 && place.militiaKind === militiaKind)[0]
+  return galaxy.placeList.filter(
+    (place) =>
+      place.blighted === 0 &&
+      !place.player &&
+      place.getHex().getUnits().length > 0 &&
+      place.militiaKind === militiaKind
+  )[0];
 }
 
 function findEnemyUnits() {
   return galaxy.unitList
-    .filter(unit => unit.undead === 1 && !unit.getFollowing())
+    .filter((unit) => unit.undead === 1 && !unit.getFollowing())
     .sort((unit1, unit2) => {
-      distanceTo(unit1, findClosestUnblightedHexFromIndex(unit1.hexTarget !== -1 ? unit1.hexTarget : unit1.hexIndex)) -
-      distanceTo(unit2, findClosestUnblightedHexFromIndex(unit2.hexTarget !== -1 ? unit2.hexTarget : unit2.hexIndex))
-    })
+      distanceTo(
+        unit1,
+        findClosestUnblightedHexFromIndex(
+          unit1.hexTarget !== -1 ? unit1.hexTarget : unit1.hexIndex
+        )
+      ) -
+        distanceTo(
+          unit2,
+          findClosestUnblightedHexFromIndex(
+            unit2.hexTarget !== -1 ? unit2.hexTarget : unit2.hexIndex
+          )
+        );
+    });
 }
 
-function delay(delay=500) {
-  return new Promise(resolve => {
-    setTimeout(function() {
+function delay(delay = 500) {
+  return new Promise((resolve) => {
+    setTimeout(function () {
       return resolve();
-    }, delay)
+    }, delay);
   });
 }
 
@@ -73,7 +95,7 @@ async function goToHex(unit, hexIndex) {
     game.trigger('select_unit', unit);
     game.trigger('mover_order_auto', hexes[hexIndex]);
     await delay(100);
-    game.trigger("select_none")
+    game.trigger('select_none');
   }
 }
 
@@ -83,18 +105,22 @@ async function nextTurn(delayms = 1250) {
 }
 
 function getArmyMight(unit) {
-  return unit.getArmy().map(unit => unit.might).reduce((a, b) => a + b, 0)
+  return unit
+    .getArmy()
+    .map((unit) => unit.might)
+    .reduce((a, b) => a + b, 0);
 }
 
 function getIndependentUnitsOnBoard() {
-  return getPlayer().getUnits()
-    .filter(unit => unit.x > 0 && !unit.getFollowing())
+  return getPlayer()
+    .getUnits()
+    .filter((unit) => unit.x > 0 && !unit.getFollowing())
     .sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2))
     .reverse();
 }
 
 function primaryUnit() {
-  return getIndependentUnitsOnBoard()[0]
+  return getIndependentUnitsOnBoard()[0];
 }
 
 function secondaryUnit() {
@@ -103,7 +129,7 @@ function secondaryUnit() {
 
 async function gatherAll(unit) {
   if (unit.hex.units.length > 1) {
-    game.trigger("gather_all", unit);
+    game.trigger('gather_all', unit);
     await delay();
   }
 }
@@ -111,7 +137,7 @@ async function gatherAll(unit) {
 async function spendAllValourOnGold() {
   const valor = Math.floor(getPlayer().valour / 10) * 10;
   if (valor >= 10) {
-    game.trigger("bazaar_buy_gold", valor);
+    game.trigger('bazaar_buy_gold', valor);
     await delay(1000);
   }
 }
@@ -125,11 +151,13 @@ function findClosestUnblightedHexFromIndex(hexIndex) {
     while (queue.length) {
       let currentHex = queue.shift();
       if (hexes[currentHex].place && !hexes[currentHex].place.blighted) {
-        return currentHex
+        return currentHex;
       } else {
-        const unpassableRivers = hexes[currentHex].rivers.filter(river => !hexes[currentHex].roads.includes(river))
-        var validNeighbors = hexes[currentHex].neighbors.filter(hex =>
-          !visited.has(hex) && !unpassableRivers.includes(hex)
+        const unpassableRivers = hexes[currentHex].rivers.filter(
+          (river) => !hexes[currentHex].roads.includes(river)
+        );
+        var validNeighbors = hexes[currentHex].neighbors.filter(
+          (hex) => !visited.has(hex) && !unpassableRivers.includes(hex)
         );
         visited.add(currentHex);
         queue = queue.concat(validNeighbors);
@@ -152,7 +180,7 @@ async function buyPlace(place) {
 }
 
 function distanceTo(unit, destinationHex) {
-  let queue = [{ hexIndex: unit.hex.index, distance: 0 }];
+  let queue = [{hexIndex: unit.hex.index, distance: 0}];
   let visited = new Set();
   while (queue.length) {
     let currentNode = queue.shift();
@@ -162,12 +190,19 @@ function distanceTo(unit, destinationHex) {
     if (currentHex === destinationHex) {
       return distance;
     } else {
-      const unpassableRivers = hexes[currentHex].rivers.filter(river => !hexes[currentHex].roads.includes(river))
-      var validNeighbors = hexes[currentHex].neighbors.filter(hex =>
-        !visited.has(hex) && !unpassableRivers.includes(hex)
+      const unpassableRivers = hexes[currentHex].rivers.filter(
+        (river) => !hexes[currentHex].roads.includes(river)
+      );
+      var validNeighbors = hexes[currentHex].neighbors.filter(
+        (hex) => !visited.has(hex) && !unpassableRivers.includes(hex)
       );
       visited.add(currentHex);
-      queue = queue.concat(validNeighbors.map(neighbor => ({ hexIndex: neighbor, distance: distance + 1 })));
+      queue = queue.concat(
+        validNeighbors.map((neighbor) => ({
+          hexIndex: neighbor,
+          distance: distance + 1,
+        }))
+      );
     }
   }
 }
@@ -178,83 +213,123 @@ async function performTurn() {
   await gatherAll(primaryUnit());
   await gatherAll(secondaryUnit());
 
-  var graveLocations = [...new Set(galaxy.graveList.map(grave => grave.hexIndex))];
+  var graveLocations = [
+    ...new Set(galaxy.graveList.map((grave) => grave.hexIndex)),
+  ];
   var freeUnits = [...getIndependentUnitsOnBoard()];
   var enemyDestinations = new Set();
 
-  var highPriorityGraves = graveLocations.filter(graveLocation => {
-    const unpassableRivers = hexes[graveLocation].rivers.filter(river => !hexes[graveLocation].roads.includes(river))
-    var validNeighbors = hexes[graveLocation].neighbors.filter(hex => !unpassableRivers.includes(hex));
+  var highPriorityGraves = graveLocations.filter((graveLocation) => {
+    const unpassableRivers = hexes[graveLocation].rivers.filter(
+      (river) => !hexes[graveLocation].roads.includes(river)
+    );
+    var validNeighbors = hexes[graveLocation].neighbors.filter(
+      (hex) => !unpassableRivers.includes(hex)
+    );
 
-    return validNeighbors.find(neighbor => {
-      return freeUnits.find(unit => unit.hexIndex === neighbor || unit.hexTarget === neighbor)
+    return validNeighbors.find((neighbor) => {
+      return freeUnits.find(
+        (unit) => unit.hexIndex === neighbor || unit.hexTarget === neighbor
+      );
     });
-  })
-  var lowPriorityGraves = graveLocations.filter(graveLocation => !highPriorityGraves.includes(graveLocation))
+  });
+  var lowPriorityGraves = graveLocations.filter(
+    (graveLocation) => !highPriorityGraves.includes(graveLocation)
+  );
 
   for (var graveLocation of highPriorityGraves) {
     if (freeUnits.length) {
-      var chosenUnit = freeUnits.reduce((minUnit, unit) => distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation) ? unit : minUnit);
+      var chosenUnit = freeUnits.reduce((minUnit, unit) =>
+        distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation)
+          ? unit
+          : minUnit
+      );
       freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
-      await goToHex(chosenUnit, graveLocation)
+      await goToHex(chosenUnit, graveLocation);
     }
   }
 
   for (var enemyUnit of findEnemyUnits()) {
-    var availableUnits = freeUnits.filter(unit => getArmyMight(unit) >= getArmyMight(enemyUnit));
-    var availableUnits = availableUnits.length === 0 && freeUnits.length > 0 ? [freeUnits[0]] : availableUnits;
-    var targetHex = enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex;
+    var availableUnits = freeUnits.filter(
+      (unit) => getArmyMight(unit) >= getArmyMight(enemyUnit)
+    );
+    var availableUnits =
+      availableUnits.length === 0 && freeUnits.length > 0
+        ? [freeUnits[0]]
+        : availableUnits;
+    var targetHex =
+      enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex;
     if (targetHex !== -1 && availableUnits.length > 0) {
-      var enemyDestination = findClosestUnblightedHexFromIndex(enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex);
+      var enemyDestination = findClosestUnblightedHexFromIndex(
+        enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex
+      );
 
       if (!enemyDestinations.has(enemyDestination)) {
-        var chosenUnit = availableUnits.reduce((minUnit, unit) => distanceTo(unit, enemyDestination) < distanceTo(minUnit, enemyDestination) ? unit : minUnit);
+        var chosenUnit = availableUnits.reduce((minUnit, unit) =>
+          distanceTo(unit, enemyDestination) <
+          distanceTo(minUnit, enemyDestination)
+            ? unit
+            : minUnit
+        );
 
         freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
         enemyDestinations.add(enemyDestination);
-        await goToHex(chosenUnit, enemyDestination)
+        await goToHex(chosenUnit, enemyDestination);
       }
     }
   }
 
   for (var graveLocation of lowPriorityGraves) {
     if (freeUnits.length) {
-      var chosenUnit = freeUnits.reduce((minUnit, unit) => distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation) ? unit : minUnit);
+      var chosenUnit = freeUnits.reduce((minUnit, unit) =>
+        distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation)
+          ? unit
+          : minUnit
+      );
       freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
-      await goToHex(chosenUnit, graveLocation)
+      await goToHex(chosenUnit, graveLocation);
     }
   }
 
   if (graveLocations.length) {
     for (var unit of freeUnits) {
-      var chosenGraveLocation = graveLocations.reduce((minGraveLocation, graveLocation) => distanceTo(unit, graveLocation) < distanceTo(unit, minGraveLocation) ? minGraveLocation : graveLocation);
+      var chosenGraveLocation = graveLocations.reduce(
+        (minGraveLocation, graveLocation) =>
+          distanceTo(unit, graveLocation) < distanceTo(unit, minGraveLocation)
+            ? minGraveLocation
+            : graveLocation
+      );
       freeUnits.splice(freeUnits.indexOf(unit), 1);
-      await goToHex(unit, chosenGraveLocation)
+      await goToHex(unit, chosenGraveLocation);
     }
   }
 
   var enemyUnits = findEnemyUnits().length;
   if (freeUnits.length && !galaxy.gameOver && enemyUnits > 0) {
-    var enemyUnits = findEnemyUnits().sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2)).reverse();
+    var enemyUnits = findEnemyUnits()
+      .sort((unit1, unit2) => getArmyMight(unit1) - getArmyMight(unit2))
+      .reverse();
 
     for (var [index, unit] of freeUnits.entries()) {
-      var enemyUnit = enemyUnits[Math.min(enemyUnits.length -1, index)]
+      var enemyUnit = enemyUnits[Math.min(enemyUnits.length - 1, index)];
       freeUnits.splice(freeUnits.indexOf(unit), 1);
-      var enemyDestination = findClosestUnblightedHexFromIndex(enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex);
-      await goToHex(unit, enemyDestination)
+      var enemyDestination = findClosestUnblightedHexFromIndex(
+        enemyUnit.hexTarget !== -1 ? enemyUnit.hexTarget : enemyUnit.hexIndex
+      );
+      await goToHex(unit, enemyDestination);
     }
   }
 
   await nextTurn();
-  console.info('Turn complete')
+  console.info('Turn complete');
 }
 
 async function init() {
   await trainAllMilitia();
   await deployStrongestUnit();
-  await gatherAllUnits()
+  await gatherAllUnits();
 
-  var placeToBuy = findPlaceWithUnclaimedUnit()
+  var placeToBuy = findPlaceWithUnclaimedUnit();
   await goToHex(primaryUnit(), placeToBuy.hex.index);
   await nextTurn(1750);
 
@@ -266,14 +341,13 @@ async function init() {
   await trainAllMilitia();
   await gatherAllUnits();
 
-  console.info('Init complete')
+  console.info('Init complete');
 }
 
 async function confirmDeck() {
-  game.trigger('deck_built')
+  game.trigger('deck_built');
   await delay(2000);
-  console.info('Game started')
-
+  console.info('Game started');
 }
 
 function pause() {
@@ -287,17 +361,20 @@ function resume() {
 async function main(leaveOnFinish = false) {
   console.info('Starting');
 
-  window.Blight.menu.trigger("create_sp_game", {"kind":"ironwood","difficulty":"1"})
+  window.Blight.menu.trigger('create_sp_game', {
+    kind: 'ironwood',
+    difficulty: '1',
+  });
   await delay(5000);
 
   game = window.Blight.game;
   galaxy = window.galaxy;
   hexes = galaxy.map.hexes;
 
-  await confirmDeck()
+  await confirmDeck();
   await init();
 
-  while(!galaxy.gameOver) {
+  while (!galaxy.gameOver) {
     if (!isPaused) {
       await performTurn();
     } else {
