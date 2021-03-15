@@ -7,6 +7,8 @@
 // Other commands
 // pause() to pause the game after the init phase
 // resume() to pause the game after the init phase
+// restart() to abandon current game and start again
+
 
 var game = window.Blight.game;
 var galaxy = window.galaxy;
@@ -358,7 +360,15 @@ function resume() {
   isPaused = false;
 }
 
-async function main(leaveOnFinish = false) {
+async function restart() {
+  galaxy.gameOver = true;
+  game.trigger('launch_menu', 'main_menu');
+  await delay(3000);
+
+  await main();
+}
+
+async function main(loop = false) {
   console.info('Starting');
 
   window.Blight.menu.trigger('create_sp_game', {
@@ -370,6 +380,7 @@ async function main(leaveOnFinish = false) {
   game = window.Blight.game;
   galaxy = window.galaxy;
   hexes = galaxy.map.hexes;
+  isPaused = false;
 
   await confirmDeck();
   await init();
@@ -384,8 +395,7 @@ async function main(leaveOnFinish = false) {
 
   console.info('Game done!');
 
-  if (leaveOnFinish) {
-    game.trigger('launch_menu', 'main_menu');
-    await delay(2000);
+  if (loop) {
+    restart();
   }
 }
