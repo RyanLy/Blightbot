@@ -15,6 +15,11 @@ var galaxy = window.galaxy;
 var hexes = galaxy?.map.hexes;
 var isPaused = false;
 
+// Utils
+function printUnits(units) {
+  return units.map(u => u.might);
+}
+
 function getOwnLocations() {
   return galaxy.placeList.filter((place) => place.player);
 }
@@ -55,14 +60,21 @@ async function deployStrongestUnit() {
   }
 }
 
-function findPlaceWithUnclaimedUnit(militiaKind = 'human_standard') {
-  return galaxy.placeList.filter(
+function findPlacesWithUnclaimedUnit() {
+  var startLocation = getPlayer().getStartPlaces()[0];
+
+  var militiaKind = startLocation.militiaKind;
+  var placesWithUnclaimedUnits = galaxy.placeList.filter(
     (place) =>
       place.blighted === 0 &&
       !place.player &&
       place.getHex().getUnits().length > 0 &&
       place.militiaKind === militiaKind
-  )[0];
+  );
+
+  return placesWithUnclaimedUnits.sort((place1, place2) => {
+    return distanceTo(startLocation, place1.hexIndex) - distanceTo(startLocation, place2.hexIndex);
+  });
 }
 
 function findEnemyUnits() {
@@ -177,12 +189,13 @@ async function gatherAllUnits() {
 }
 
 async function buyPlace(place) {
+  game.trigger("show_place", place);
   game.trigger('buy_place', place);
-  await delay(1500);
+  await delay(2000);
 }
 
 function distanceTo(unit, destinationHex) {
-  let queue = [{hexIndex: unit.hex.index, distance: 0}];
+  let queue = [{hexIndex: unit.hexIndex, distance: 0}];
   let visited = new Set();
   while (queue.length) {
     let currentNode = queue.shift();
@@ -209,14 +222,9 @@ function distanceTo(unit, destinationHex) {
   }
 }
 
-async function performTurn() {
-  await spendAllValourOnGold();
-  await trainAllMilitia();
-  await gatherAll(primaryUnit());
-  await gatherAll(secondaryUnit());
-
+async function assignPaths() {
   var graveLocations = [
-    ...new Set(galaxy.graveList.map((grave) => grave.hexIndex)),
+    ...new Set(galaxy.graveList.map((grave) => (grave.hexTarget !== -1 || !grave.hexTarget) ? [grave.hexTarget,grave.hexIndex][Math.floor(Math.random()*2)] : grave.hexIndex)),
   ];
   var freeUnits = [...getIndependentUnitsOnBoard()];
   var enemyDestinations = new Set();
@@ -231,7 +239,7 @@ async function performTurn() {
 
     return validNeighbors.find((neighbor) => {
       return freeUnits.find(
-        (unit) => unit.hexIndex === neighbor || unit.hexTarget === neighbor
+        (unit) => unit.hexIndex === neighbor
       );
     });
   });
@@ -257,7 +265,7 @@ async function performTurn() {
     );
     var availableUnits =
       availableUnits.length === 0 && freeUnits.length > 0
-        ? [freeUnits[0]]
+        ? freeUnits
         : availableUnits;
     var targetHex =
       enemyUnit.hexTarget === -1 ? enemyUnit.hexIndex : enemyUnit.hexTarget;
@@ -321,9 +329,22 @@ async function performTurn() {
       await goToHex(unit, enemyDestination);
     }
   }
+}
 
-  await nextTurn();
-  console.info('Turn complete');
+async function performTurn(commit = true) {
+  await spendAllValourOnGold();
+  await trainAllMilitia();
+  await gatherAll(primaryUnit());
+  if (getIndependentUnitsOnBoard().length > 5) {
+    await gatherAll(secondaryUnit());
+  }
+
+  await assignPaths();
+
+  if (commit) {
+    await nextTurn();
+    console.info('Turn complete');
+  }
 }
 
 async function init() {
@@ -331,14 +352,20 @@ async function init() {
   await deployStrongestUnit();
   await gatherAllUnits();
 
-  var placeToBuy = findPlaceWithUnclaimedUnit();
-  await goToHex(primaryUnit(), placeToBuy.hex.index);
-  await nextTurn(1750);
+  var placeToBuy = findPlacesWithUnclaimedUnit()[0];
+  while(placeToBuy && !placeToBuy.player) {
+    if (placeToBuy.canBuy()) {
+      await buyPlace(placeToBuy);
+      break;
+    } else{
+      await trainAllMilitia();
+      await gatherAllUnits();
+      await goToHex(primaryUnit(), placeToBuy.hexIndex);
+      await nextTurn(1750);
+    }
+  }
+  console.log('bought!');
 
-  await trainAllMilitia();
-  await nextTurn(1750);
-
-  await buyPlace(placeToBuy);
   await deployStrongestUnit();
   await trainAllMilitia();
   await gatherAllUnits();
