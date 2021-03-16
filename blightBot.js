@@ -222,44 +222,8 @@ function distanceTo(unit, destinationHex) {
   }
 }
 
-async function assignPaths() {
-  var graveLocations = [
-    ...new Set(galaxy.graveList.map((grave) => (grave.hexTarget !== -1 || !grave.hexTarget) ? [grave.hexTarget,grave.hexIndex][Math.floor(Math.random()*2)] : grave.hexIndex)),
-  ];
-  var freeUnits = [...getIndependentUnitsOnBoard()];
-  var enemyDestinations = new Set();
-
-  var highPriorityGraves = graveLocations.filter((graveLocation) => {
-    const unpassableRivers = hexes[graveLocation].rivers.filter(
-      (river) => !hexes[graveLocation].roads.includes(river)
-    );
-    var validNeighbors = hexes[graveLocation].neighbors.filter(
-      (hex) => !unpassableRivers.includes(hex)
-    );
-
-    return validNeighbors.find((neighbor) => {
-      return freeUnits.find(
-        (unit) => unit.hexIndex === neighbor
-      );
-    });
-  });
-  var lowPriorityGraves = graveLocations.filter(
-    (graveLocation) => !highPriorityGraves.includes(graveLocation)
-  );
-
-  for (var graveLocation of highPriorityGraves) {
-    if (freeUnits.length) {
-      var chosenUnit = freeUnits.reduce((minUnit, unit) =>
-        distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation)
-          ? unit
-          : minUnit
-      );
-      freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
-      await goToHex(chosenUnit, graveLocation);
-    }
-  }
-
-  for (var enemyUnit of findEnemyUnits()) {
+async function assignUnitsToEnemies(freeUnits, enemies, enemyDestinations) {
+  for (var enemyUnit of enemies) {
     var availableUnits = freeUnits.filter(
       (unit) => getArmyMight(unit) >= getArmyMight(enemyUnit)
     );
@@ -288,6 +252,49 @@ async function assignPaths() {
       }
     }
   }
+}
+
+async function assignPaths() {
+  var graveLocations = [
+    ...new Set(galaxy.graveList.map((grave) => (grave.hexTarget !== -1 || !grave.hexTarget) ? [grave.hexTarget,grave.hexIndex][Math.floor(Math.random()*2)] : grave.hexIndex)),
+  ];
+  var enemyDestinations = new Set();
+  var freeUnits = [...getIndependentUnitsOnBoard()];
+  var highPriorityUnits = findEnemyUnits().filter(unit => unit.might > 500);
+  var lowPriorityUnits = findEnemyUnits().filter(unit => unit.might <= 500);
+
+  await assignUnitsToEnemies(freeUnits, highPriorityUnits, enemyDestinations);
+
+  var highPriorityGraves = graveLocations.filter((graveLocation) => {
+    const unpassableRivers = hexes[graveLocation].rivers.filter(
+      (river) => !hexes[graveLocation].roads.includes(river)
+    );
+    var validNeighbors = hexes[graveLocation].neighbors.filter(
+      (hex) => !unpassableRivers.includes(hex)
+    );
+
+    return validNeighbors.find((neighbor) => {
+      return freeUnits.find(
+        (unit) => unit.hexIndex === neighbor
+      );
+    });
+  });
+  var lowPriorityGraves = graveLocations.filter((graveLocation) => !highPriorityGraves.includes(graveLocation));
+
+  for (var graveLocation of highPriorityGraves) {
+    if (freeUnits.length) {
+      var chosenUnit = freeUnits.reduce((minUnit, unit) =>
+        distanceTo(unit, graveLocation) < distanceTo(minUnit, graveLocation)
+          ? unit
+          : minUnit
+      );
+      freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
+      enemyDestinations.add(graveLocation);
+      await goToHex(chosenUnit, graveLocation);
+    }
+  }
+
+  await assignUnitsToEnemies(freeUnits, lowPriorityUnits, enemyDestinations);
 
   for (var graveLocation of lowPriorityGraves) {
     if (freeUnits.length) {
@@ -297,6 +304,7 @@ async function assignPaths() {
           : minUnit
       );
       freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
+      enemyDestinations.add(graveLocation);
       await goToHex(chosenUnit, graveLocation);
     }
   }
@@ -335,9 +343,7 @@ async function performTurn(commit = true) {
   await spendAllValourOnGold();
   await trainAllMilitia();
   await gatherAll(primaryUnit());
-  if (getIndependentUnitsOnBoard().length > 5) {
-    await gatherAll(secondaryUnit());
-  }
+  await gatherAll(secondaryUnit());
 
   await assignPaths();
 
