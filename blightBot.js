@@ -154,6 +154,7 @@ async function spendAllValourOnGold() {
   if (valor >= 10) {
     game.trigger('bazaar_buy_gold', valor);
     await delay(1000);
+    console.info(`Bought: ${valor * 2} gold for ${valor}!`);
   }
 }
 
@@ -193,6 +194,7 @@ async function buyPlace(place) {
   game.trigger("show_place", place);
   game.trigger('buy_place', place);
   await delay(2000);
+  console.info(`Bought: ${placeToBuy.name}!`);
 }
 
 function distanceTo(unit, destinationHex) {
@@ -378,7 +380,6 @@ async function init() {
     for (var placeToBuy of findPlacesWithUnclaimedUnit()) {
       if (placeToBuy.canBuy()) {
         await buyPlace(placeToBuy);
-        console.info(`Bought ${placeToBuy.name}!`);
       }
     }
 
@@ -411,6 +412,7 @@ function resume() {
 }
 
 async function restart(campaign) {
+  console.info('Restarting');
   galaxy.gameOver = true;
   game.trigger('launch_menu', 'main_menu');
   await delay(3000);
@@ -426,6 +428,7 @@ async function main(campaign = 'deadman', loop = false) {
     kind: campaign,
     difficulty: '1',
   });
+  console.info('Launching: ${campaign}');
   await delay(5000);
 
   game = window.Blight.game;
