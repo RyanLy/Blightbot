@@ -194,7 +194,7 @@ async function buyPlace(place) {
   game.trigger("show_place", place);
   game.trigger('buy_place', place);
   await delay(2000);
-  console.info(`Bought: ${placeToBuy.name}!`);
+  console.info(`Bought: ${place.name}!`);
 }
 
 function distanceTo(unit, destinationHex) {
