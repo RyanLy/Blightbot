@@ -411,13 +411,13 @@ function resume() {
   isPaused = false;
 }
 
-async function restart(campaign) {
+async function restart(campaign, loop) {
   console.info('Restarting');
   galaxy.gameOver = true;
   game.trigger('launch_menu', 'main_menu');
   await delay(3000);
 
-  await main(campaign);
+  await main(campaign, loop);
 }
 
 // available campaigns: 'ironwood', 'deadman'
@@ -450,6 +450,6 @@ async function main(campaign = 'deadman', loop = false) {
   console.info('Game done!');
 
   if (loop) {
-    restart(campaign);
+    restart(campaign, loop);
   }
 }
