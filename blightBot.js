@@ -150,11 +150,11 @@ async function gatherAll(unit) {
 }
 
 async function spendAllValourOnGold() {
-  const valor = Math.floor(getPlayer().valour / 10) * 10;
-  if (valor >= 10) {
-    game.trigger('bazaar_buy_gold', valor);
+  const valour = Math.floor(getPlayer().valour / 10) * 10;
+  if (valour >= 10) {
+    game.trigger('bazaar_buy_gold', valour);
     await delay(1000);
-    console.info(`Bought: ${valor * 2} gold for ${valor}!`);
+    console.info(`Bought: ${valour * 2} gold for ${valour} valour!`);
   }
 }
 
