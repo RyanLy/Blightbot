@@ -365,7 +365,8 @@ async function init() {
       break;
     } else{
       await trainAllMilitia();
-      await gatherAllUnits();
+      await gatherAll(primaryUnit());
+      await assignPaths();
       await goToHex(primaryUnit(), placeToBuy.hexIndex);
       await nextTurn(1750);
     }
