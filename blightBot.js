@@ -1,7 +1,7 @@
 // For blightBuildNumber = 1052;
 // Works on the Ironwood River Human Campaign.
 // 1. On the main page, paste this entire file in the chrome console
-// 2. Type in main()
+// 2. Type in main(). You can pass in the campaign name too. Eg. main('ironwood') to play the human campaign
 // 3. Enjoy!
 
 // Other commands
@@ -50,6 +50,7 @@ async function deployStrongestUnit() {
     game.trigger('select_drawn_unit', strongest);
     game.trigger('pre_deploy_drawn_unit', strongest, getPlayer());
     await delay();
+    console.info(`Played: [${strongest.might}] ${strongest.name}`);
 
     const ownLocations = getOwnLocations();
     game.trigger(
@@ -254,7 +255,7 @@ async function assignUnitsToEnemies(freeUnits, enemies, enemyDestinations) {
   }
 }
 
-async function assignPaths() {
+async function assignPaths(lookForPlaces=false) {
   var graveLocations = [
     ...new Set(galaxy.graveList.map((grave) => (grave.hexTarget !== -1 || !grave.hexTarget) ? [grave.hexTarget,grave.hexIndex][Math.floor(Math.random()*2)] : grave.hexIndex)),
   ];
@@ -262,6 +263,21 @@ async function assignPaths() {
   var freeUnits = [...getIndependentUnitsOnBoard()];
   var highPriorityUnits = findEnemyUnits().filter(unit => unit.might > 500);
   var lowPriorityUnits = findEnemyUnits().filter(unit => unit.might <= 500);
+
+  if (lookForPlaces) {
+    for (var placeToBuy of findPlacesWithUnclaimedUnit()) {
+      if (freeUnits.length > 0) {
+        var chosenUnit = freeUnits.reduce((minUnit, unit) =>
+          distanceTo(unit, placeToBuy.hexIndex) < distanceTo(minUnit, placeToBuy.hexIndex)
+            ? unit
+            : minUnit
+          );
+        freeUnits.splice(freeUnits.indexOf(chosenUnit), 1);
+
+        await goToHex(chosenUnit, placeToBuy.hexIndex);
+      }
+    }
+  }
 
   await assignUnitsToEnemies(freeUnits, highPriorityUnits, enemyDestinations);
 
@@ -356,22 +372,22 @@ async function performTurn(commit = true) {
 async function init() {
   await trainAllMilitia();
   await deployStrongestUnit();
-  await gatherAllUnits();
+  await gatherAll(primaryUnit());
 
-  var placeToBuy = findPlacesWithUnclaimedUnit()[0];
-  while(placeToBuy && !placeToBuy.player) {
-    if (placeToBuy.canBuy()) {
-      await buyPlace(placeToBuy);
-      break;
-    } else{
-      await trainAllMilitia();
-      await gatherAll(primaryUnit());
-      await assignPaths();
-      await goToHex(primaryUnit(), placeToBuy.hexIndex);
-      await nextTurn(1750);
+  while(findPlacesWithUnclaimedUnit().length > 0 && findPlacesWithUnclaimedUnit().find(placeToBuy => !placeToBuy.player)) {
+    for (var placeToBuy of findPlacesWithUnclaimedUnit()) {
+      if (placeToBuy.canBuy()) {
+        await buyPlace(placeToBuy);
+        console.info(`Bought ${placeToBuy.name}!`);
+      }
     }
+
+    await trainAllMilitia();
+    await gatherAll(primaryUnit());
+    var lookForPlaces = true;
+    await assignPaths(lookForPlaces);
+    await nextTurn(1750);
   }
-  console.log('bought!');
 
   await deployStrongestUnit();
   await trainAllMilitia();
@@ -394,19 +410,20 @@ function resume() {
   isPaused = false;
 }
 
-async function restart() {
+async function restart(campaign) {
   galaxy.gameOver = true;
   game.trigger('launch_menu', 'main_menu');
   await delay(3000);
 
-  await main();
+  await main(campaign);
 }
 
-async function main(loop = false) {
+// available campaigns: 'ironwood', 'deadman'
+async function main(campaign = 'deadman', loop = false) {
   console.info('Starting');
 
   window.Blight.menu.trigger('create_sp_game', {
-    kind: 'ironwood',
+    kind: campaign,
     difficulty: '1',
   });
   await delay(5000);
@@ -430,6 +447,6 @@ async function main(loop = false) {
   console.info('Game done!');
 
   if (loop) {
-    restart();
+    restart(campaign);
   }
 }
