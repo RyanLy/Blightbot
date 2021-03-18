@@ -28,11 +28,15 @@ function getPlayer() {
   return galaxy.playerList[0];
 }
 
+function logInfo(info) {
+  console.info(`[${new Date()}] ${info}`);
+}
+
 async function trainAllMilitia() {
   for (const place of getOwnLocations()) {
     if (place.militiaEta === 0 && getPlayer().gold > place.militiaCost) {
       game.trigger('train_militia', place);
-      await delay(1500);
+      await delay(1250);
     }
   }
 }
@@ -50,7 +54,7 @@ async function deployStrongestUnit() {
     game.trigger('select_drawn_unit', strongest);
     game.trigger('pre_deploy_drawn_unit', strongest, getPlayer());
     await delay();
-    console.info(`Played: [${strongest.might}] ${strongest.name}`);
+    logInfo(`Played: [${strongest.might}] ${strongest.name}`);
 
     const ownLocations = getOwnLocations();
     game.trigger(
@@ -154,7 +158,7 @@ async function spendAllValourOnGold() {
   if (valour >= 10) {
     game.trigger('bazaar_buy_gold', valour);
     await delay(1000);
-    console.info(`Bought: ${valour * 2} gold for ${valour} valour!`);
+    logInfo(`Bought: ${valour * 2} gold for ${valour} valour!`);
   }
 }
 
@@ -193,8 +197,8 @@ async function gatherAllUnits() {
 async function buyPlace(place) {
   game.trigger("show_place", place);
   game.trigger('buy_place', place);
-  await delay(2000);
-  console.info(`Bought: ${place.name}!`);
+  await delay(1500);
+  logInfo(`Bought: ${place.name}!`);
 }
 
 function distanceTo(unit, destinationHex) {
@@ -367,7 +371,7 @@ async function performTurn(commit = true) {
 
   if (commit) {
     await nextTurn();
-    console.info('Turn complete');
+    logInfo('Turn complete');
   }
 }
 
@@ -394,13 +398,13 @@ async function init() {
   await trainAllMilitia();
   await gatherAllUnits();
 
-  console.info('Init complete');
+  logInfo('Init complete');
 }
 
 async function confirmDeck() {
   game.trigger('deck_built');
   await delay(2000);
-  console.info('Game started');
+  logInfo('Game started');
 }
 
 function pause() {
@@ -412,7 +416,7 @@ function resume() {
 }
 
 async function restart(campaign, loop) {
-  console.info('Restarting');
+  logInfo('Restarting');
   galaxy.gameOver = true;
   game.trigger('launch_menu', 'main_menu');
   await delay(3000);
@@ -422,13 +426,13 @@ async function restart(campaign, loop) {
 
 // available campaigns: 'ironwood', 'deadman'
 async function main(campaign = 'deadman', loop = false) {
-  console.info('Starting');
+  logInfo('Starting');
 
   window.Blight.menu.trigger('create_sp_game', {
     kind: campaign,
     difficulty: '1',
   });
-  console.info('Launching: ${campaign}');
+  logInfo(`Launching: ${campaign}`);
   await delay(5000);
 
   game = window.Blight.game;
@@ -447,7 +451,7 @@ async function main(campaign = 'deadman', loop = false) {
     }
   }
 
-  console.info('Game done!');
+  logInfo('Game done!');
 
   if (loop) {
     restart(campaign, loop);
