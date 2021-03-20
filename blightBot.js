@@ -452,6 +452,7 @@ async function main(campaign = 'deadman', loop = false) {
   }
 
   logInfo('Game done!');
+  logInfo(`Coins awarded: ${getPlayer().rewards.coinsForWin || 0}`);
 
   if (loop) {
     restart(campaign, loop);
