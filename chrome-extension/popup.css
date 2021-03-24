@@ -1,0 +1,28 @@
+html {
+  min-width: 400px;
+  border-radius: 6px;
+  height: auto;
+}
+
+body {
+  padding: 24px;
+  width: auto;
+}
+
+.button-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.button-container button {
+  margin-bottom: 16px;
+}
+
+button {
+  border-radius: 8px;
+}
+
+#logs-container {
+  max-height: 150px;
+  overflow: auto;
+}

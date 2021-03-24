@@ -1,0 +1,16 @@
+{
+  "name": "BlightBot",
+  "description": "Blightbot extension",
+  "version": "1.0",
+  "manifest_version": 2,
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "tabs", "storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://blight.ironhelmet.com/*"],
+      "js": ["background.js"]
+    }
+  ]
+}
