@@ -424,6 +424,11 @@ async function restart(campaign, loop) {
   await main(campaign, loop);
 }
 
+async function exit() {
+  game = window.Blight.game;
+  game.trigger('launch_menu', 'main_menu');
+}
+
 // available campaigns: 'ironwood', 'deadman'
 async function main(campaign = 'deadman', loop = false) {
   logInfo('Starting');
